@@ -1,0 +1,73 @@
+## Train MCLE for the PASSIVE case
+
+## Initialize theta to zero (corr. to all micropotential = 1)
+"""TESTING"""
+#theta_A1_t_th = theta_1_star
+#theta_A2_t_th = theta_2_star
+theta_A1_t_th = dict(zip(list(theta_1_star.keys()), np.zeros(len(theta_1_star))))
+theta_A2_t_th = dict(zip(list(theta_2_star.keys()), np.zeros(len(theta_2_star))))
+
+## SG-ascent
+eta = 0.00001
+n_iter = 10000
+J = 2
+for iter in range(n_iter):
+    sample = np.random.choice(D)
+    
+    f_A1_1 = dict(zip(list(theta_1_star.keys()), np.zeros(len(theta_1_star))))
+    f_A1_1[sample[:2]] = 1
+    Z_theta_A1_given_notA1_i = 0
+    f_A1_2 = dict(zip(list(theta_1_star.keys()), np.zeros(len(theta_1_star))))
+    for x1x2 in list(theta_1_star.keys()):
+        x1x2_theta_t_th_mp = math.exp(theta_A1_t_th[x1x2]) * math.exp(theta_A2_t_th[sample[:2]])
+        f_A1_2[x1x2] = x1x2_theta_t_th_mp
+        Z_theta_A1_given_notA1_i += x1x2_theta_t_th_mp    
+    grad_theta_A1 = subtract_dict(scalarmult_dict(J, f_A1_1), scalarmult_dict(1/Z_theta_A1_given_notA1_i, f_A1_2))
+    if iter < 20:
+        print('%s iter, grad_theta_A1 = %s' % (iter, grad_theta_A1))
+    
+    f_A2_1 = dict(zip(list(theta_2_star.keys()), np.zeros(len(theta_2_star))))
+    f_A2_1[sample[-2:]] = 1
+    Z_theta_A2_given_notA2_i = 0
+    f_A2_2 = dict(zip(list(theta_2_star.keys()), np.zeros(len(theta_2_star))))
+    for x3x4 in list(theta_2_star.keys()):
+        x3x4_theta_t_th_mp = math.exp(theta_A2_t_th[x3x4]) * math.exp(theta_A1_t_th[sample[-2:]])
+        f_A2_2[x3x4] = x3x4_theta_t_th_mp
+        Z_theta_A2_given_notA2_i += x3x4_theta_t_th_mp 
+    grad_theta_A2 = subtract_dict(scalarmult_dict(J, f_A2_1), scalarmult_dict(1/Z_theta_A2_given_notA2_i, f_A2_2))
+    #if iter % 1000 == 0:
+     #   print('%s iter, grad_theta_A2 = %s' % (iter, grad_theta_A2))
+    
+    theta_A1_t_th = add_dict(theta_A1_t_th, scalarmult_dict(eta*(1/(1)), grad_theta_A1))
+    theta_A2_t_th = add_dict(theta_A2_t_th, scalarmult_dict(eta*(1/(1)), grad_theta_A2))
+    
+## Final output    
+print('Final theta_A1: %s' % theta_A1_t_th)
+print('L1 error theta_A1 = %s' % l1norm_dict(subtract_dict(theta_A1_t_th, theta_1_star)))
+print('Final theta_A2: %s' % theta_A2_t_th)
+print('L1 error theta_A2 = %s' % l1norm_dict(subtract_dict(theta_A2_t_th, theta_2_star)))
+
+
+######################## PRINTOUT ###################################
+
+
+fig_theta_passive, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(8,10))
+
+ax1.bar(list(range(9)), list(final_thetaA1.values()),width=0.35)
+ax2.bar(list(range(9)), list(final_thetaA2.values()),width=0.35)
+
+ax1.set_xticks(list(range(9)))
+ax1.set_xticklabels(X1X2_sequences)
+ax1.set_yticks(range(0,3,1))
+ax1.set_ylabel(r'$\hat{\theta_{1}}^{Passive}$ weights')
+
+ax2.set_yticks(range(-2,3,1))
+ax2.axhline()
+ax2.set_ylabel(r'$\hat{\theta_{2}}^{Passive}$ weights')
+ax2.set_xlabel('Sequences')
+
+plt.subplots_adjust(hspace = .05)
+ax1.set_title(r'Distribution of $\hat{\theta_{1}}, \hat{\theta_{2}}$ weights over possible $\{ A, B, C \}^{2}$ sequences for the Passive Case')
+
+plt.savefig("theta_passive_fig.png")
+plt.show()
